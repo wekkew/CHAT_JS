@@ -1,101 +1,128 @@
-var socket = io('http://10.10.0.34:3000');
-//this function just loaded when the log in has completed
-function chat() {
-    var loginName = document.getElementById('loginNameInput').value;
-    // if the loginname is tto short than the page will be reloaded
-    if (loginName.length < 3) {
-        window.history.go();
-    }
-    else {
-        socket.emit('join', loginName);
-    }
-    // if the login name is good than the log process finished with the comminication with the server
-    document.getElementById('login').remove();
+( function () {
 
-    /*
-    var onlineBox = document.createElement('ul');
-        onlineBox.setAttribute('id', 'onlineBox');
-        document.body.appendChild(onlineBox);
-        */
-    // there goes the chat text
-    var textArea = document.createElement('input');
-        textArea.setAttribute('type', 'text');
-        textArea.setAttribute('id', 'textInput');
-        textArea.setAttribute('class', 'szoveg');
-        textArea.setAttribute('minlength', '1');
-        textArea.setAttribute('value', '');
-        document.body.appendChild(textArea);
+    //get hmtl elements to work with
+    var loginFormEl = document.getElementById('login');
+    var loginErrorEl = document.getElementById('loginError')
+    var chatFormEl = document.getElementById('chat');
+    var onlineEl = document.getElementById('onlineClients');
 
-    var textButton = document.createElement('button');
-        textButton.setAttribute('id', 'textButton');
-        textButton.setAttribute('class', 'szoveg');
-        textButton.textContent = 'Send';
-        document.body.appendChild(textButton);
-    // newevent function helps me to insert a new element in the flow
-    function newEvent (who, what) {
-        var div = document.createElement('div');
-            div.setAttribute('class', who);
-            div.textContent = who + ' : ' + what;
-            document.body.appendChild(div);
+
+    var usernameEl = loginFormEl.elements[0];
+    var submitEl = loginFormEl.elements[1];
+
+    var socket = io('http://10.10.0.34:3000');
+
+    function chat(username, users) {
+
+        users.forEach(function (user) {
+            var client = document.createElement('p');
+                client.setAttribute('id', user + 'online');
+                client.textContent = user;
+                onlineEl.appendChild(client);
+        });
+
+        var textEl = document.getElementById('chatInput');
+        var blackBoardEl = document.getElementById('activeChat');
+
+        var chatTextEl = textEl.elements[0];
+        var chatSend = textEl.elements[1];
+
+        function sendMessage (event) {
+            event.preventDefault();
+            var sendText = chatTextEl.value;
+            socket.emit('message', sendText);
+            var myMessage = document.createElement('p');
+                myMessage.setAttribute('class', username);
+                myMessage.textContent = '[' + username + ']' + ' -> ' + sendText;
+            blackBoardEl.appendChild(myMessage);
+            chatTextEl.value = '';
+        };
+
+        socket.on('user joined', function(data) {
+            console.log(data.username + ' :has joined');
+            var newClient = document.createElement('p');
+                newClient.setAttribute('id', data.username + 'online');
+                newClient.textContent = data.username;
+                onlineClients.appendChild(newClient);
+        });
+
+        socket.on('user left', function(data) {
+            console.log(data.username + ' :has left');
+            document.getElementById(data.username + 'online').remove();
+        });
+
+        socket.on('new message', function(data) {
+            console.log(data.username + ' : ' + data.message);
+            var message = document.createElement('p');
+                message.setAttribute('class', data.username+'message');
+                message.textContent = '{' + data.username + '}' + ' -> ' + data.message;
+            blackBoardEl.appendChild(message);
+        });
+
+        textEl.addEventListener('submit', sendMessage);
+
+    };
+    //end of chat prog
+
+    function loggingIn (username) {
+        usernameEl.disabled = true;
+        submitEl.disabled = true;
+        socket.emit('login', username);
     };
 
-    // sendMessage sends the message to the server
-    function sendMessage () {
-        var textMessage = document.getElementById('textInput').value;
-        socket.emit('message', textMessage);
-        newEvent(loginName, textMessage);
-        document.getElementById('textInput').value = '';
-    }
-    // these are just the event listeneres for the click and the enter
-    textButton.addEventListener('click', sendMessage);
-    textArea.addEventListener('keydown', function (event) {
-        if (event.keyCode === 13) {
-            sendMessage();
+    function setLoginError (message) {
+        loginErrorEl.textContent = message;
+        usernameEl.disabled = false;
+        submitEl.disabled = false;
+        loginFormEl.setAttribute('class', '');
+    };
+
+    function logIn (event) {
+        event.preventDefault();
+
+        loginErrorEl.textContent = '';
+
+        var username = usernameEl.value.trim();
+        var errorMessage;
+
+        if (username.length === 0) {
+            errorMessage = 'Error: enter an username above';
+        } else if (username.length < 3) {
+            errorMessage = 'Error: enter at least 3 characters';
+        }
+
+        if (errorMessage) {
+            setLoginError(errorMessage);
         }
         else {
-            return;
+            loggingIn(username);
         }
-    })
-/*
-    var onlineClientList = [];
-*/
+    };
 
-//some server communications
-    socket.on('user joined', function(data) {
-        var hasJoined = ' has joined :)';
-        console.log(data.username + hasJoined);
-        newEvent(data.username, hasJoined);
+    function logInSucces (username, users) {
+        loginFormEl.setAttribute('style', 'display: none');
+        chatFormEl.setAttribute('style', 'display: block');
+        chat(username, users);
 
-    });
+        console.log(username);
+        console.log(users);
+    }
 
-    socket.on('user left', function(data) {
-        var hasLeft = ' has left :('
-        console.log(data.username + hasLeft);
-        newEvent(data.username, hasLeft);
-
-
-    });
-
-    socket.on('new message', function(data) {
-        console.log(data.username + ' : ' + data.message);
-        newEvent(data.username, data.message);
-
+    socket.on('login status', function (response) {
+        if (response.status === 'taken') {
+            setLoginError('Error: this login name has taken');
+            console.log('we must reach out to Liam Neeson ;)');
+        }
+        else {
+            logInSucces (response.username, response.users);
+        }
+        console.log(response);
     })
 
-};
-//end of chat prog
+    loginFormEl.addEventListener('submit', logIn);
 
 
-// the startpages event listeners
-var loginNameButton = document.getElementById('loginNameButton');
-loginNameButton.addEventListener('click', chat);
 
-var loginNameInput = document.getElementById('loginNameInput');
-loginNameInput.addEventListener('keydown', function (event) {
-    if (event.keyCode === 13) {
-        chat();
-    }
-    else {
-        return;
-    }
-});
+
+
+})();

@@ -4,13 +4,24 @@
         <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/1.4.6/socket.io.js"></script>
         <meta charset="utf-8">
         <title>chat</title>
+        <link rel="stylesheet" href="style/chat.css">
     </head>
     <body>
-        <section id="login">
-
-            <input type="text" value="" id="loginNameInput" minlength="3">
-            <button type="button" id="loginNameButton">Login</button>
-
+        <form id="login">
+            <div>
+                <h3>Please insert a nickname:</h3>
+                <input type="text" value="" id="loginNameInput" >
+                <input type="submit" id="loginNameButton" value="Login"></input>
+                <span id="loginError"></span>
+            </div>
+        </form>
+        <section id="chat">
+            <form id="chatInput">
+                <input type="text" id="text" value="" class="szoveg">
+                <!-- <input type="submit" id="textSend" value="Send" class="szoveg"> -->
+            </form>
+            <div id="onlineClients"></div>
+            <div id="activeChat"></div>
         </section>
 
 
